@@ -50,6 +50,7 @@ class GoToTask(Task):
             < self.target_radius
         )
 
+
 class CloseGripperTask(Task):
     def __init__(self, robot):
         self.robot = robot
@@ -63,6 +64,7 @@ class CloseGripperTask(Task):
     def reset(self):
         pass
 
+
 class ObjectMoveTask(Task):
     def __init__(self, object_path, position, orientation, robot):
         self.object_path = object_path
@@ -73,15 +75,23 @@ class ObjectMoveTask(Task):
 
     def reward(self):
         object_current_position = p.getBasePositionAndOrientation(self.object_id)[0]
-        object_dist_reward = -np.linalg.norm(np.array(object_current_position) - np.array(self.object_start_position))
+        object_dist_reward = -np.linalg.norm(
+            np.array(object_current_position) - np.array(self.object_start_position)
+        )
         gripper_position = p.getLinkState(self.robot.id, self.robot.eef_id)[0]
-        gripper_dist_to_object_reward = -np.linalg.norm(np.array(object_current_position) - np.array(gripper_position))
-        rounded_dist = round(object_dist_reward + gripper_dist_to_object_reward, 2) # round to 2 decimal places to remove noise
+        gripper_dist_to_object_reward = -np.linalg.norm(
+            np.array(object_current_position) - np.array(gripper_position)
+        )
+        rounded_dist = round(
+            object_dist_reward + gripper_dist_to_object_reward, 2
+        )  # round to 2 decimal places to remove noise
         return rounded_dist
 
     def is_done(self):
         object_current_position = p.getBasePositionAndOrientation(self.object_id)[0]
-        dist = np.linalg.norm(np.array(object_current_position) - np.array(self.object_start_position))
+        dist = np.linalg.norm(
+            np.array(object_current_position) - np.array(self.object_start_position)
+        )
         if dist > 0.25:
             print("Object moved {} meters".format(dist))
             return True
@@ -91,6 +101,7 @@ class ObjectMoveTask(Task):
         self.object_id = p.loadURDF(self.object_path, self.position, self.orientation)
         self.object_start_position = p.getBasePositionAndOrientation(self.object_id)[0]
 
+
 class GrabTask(Task):
     def __init__(self, robot, eef_id, target_pos, target_radius):
         self.index = 0
@@ -98,7 +109,7 @@ class GrabTask(Task):
         self.args = [
             (robot.id, eef_id, target_pos, target_radius),
             (robot,),
-                ]
+        ]
         self.current_step = self.steps[self.index](*self.args[self.index])
 
     def reward(self):

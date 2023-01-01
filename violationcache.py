@@ -1,8 +1,9 @@
 from violations import Violation
 from typing import List
 
+
 class ViolationCache:
-    def __init__(self, violations:List[Violation]):
+    def __init__(self, violations: List[Violation]):
         self.violations = violations
         self.cache = {}
 

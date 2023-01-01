@@ -41,17 +41,23 @@ class YCBModels(Models):
                         in_selected = True
                 if not in_selected:
                     continue
-            print('Loading %s' % filename)
+            print("Loading %s" % filename)
             self.collision_shapes.append(
-                p.createCollisionShape(shapeType=p.GEOM_MESH,
-                                       fileName=filename,
-                                       collisionFramePosition=shift,
-                                       meshScale=mesh_scale))
+                p.createCollisionShape(
+                    shapeType=p.GEOM_MESH,
+                    fileName=filename,
+                    collisionFramePosition=shift,
+                    meshScale=mesh_scale,
+                )
+            )
             self.visual_shapes.append(
-                p.createVisualShape(shapeType=p.GEOM_MESH,
-                                    fileName=filename,
-                                    visualFramePosition=shift,
-                                    meshScale=mesh_scale))
+                p.createVisualShape(
+                    shapeType=p.GEOM_MESH,
+                    fileName=filename,
+                    visualFramePosition=shift,
+                    meshScale=mesh_scale,
+                )
+            )
 
     def __len__(self):
         return len(self.collision_shapes)
@@ -68,10 +74,12 @@ class Camera:
 
         aspect = self.width / self.height
         self.view_matrix = p.computeViewMatrix(cam_pos, cam_tar, cam_up_vector)
-        self.projection_matrix = p.computeProjectionMatrixFOV(self.fov, aspect, self.near, self.far)
+        self.projection_matrix = p.computeProjectionMatrixFOV(
+            self.fov, aspect, self.near, self.far
+        )
 
-        _view_matrix = np.array(self.view_matrix).reshape((4, 4), order='F')
-        _projection_matrix = np.array(self.projection_matrix).reshape((4, 4), order='F')
+        _view_matrix = np.array(self.view_matrix).reshape((4, 4), order="F")
+        _projection_matrix = np.array(self.projection_matrix).reshape((4, 4), order="F")
         self.tran_pix_world = np.linalg.inv(_projection_matrix @ _view_matrix)
 
     def rgbd_2_world(self, w, h, d):
@@ -86,9 +94,12 @@ class Camera:
 
     def shot(self):
         # Get depth values using the OpenGL renderer
-        _w, _h, rgb, depth, seg = p.getCameraImage(self.width, self.height,
-                                                   self.view_matrix, self.projection_matrix,
-                                                   )
+        _w, _h, rgb, depth, seg = p.getCameraImage(
+            self.width,
+            self.height,
+            self.view_matrix,
+            self.projection_matrix,
+        )
         return rgb, depth, seg
 
     def rgbd_2_world_batch(self, depth):
@@ -99,7 +110,9 @@ class Camera:
         y = np.repeat(y[:, None], self.width, axis=1)
         z = 2 * depth - 1
 
-        pix_pos = np.array([x.flatten(), y.flatten(), z.flatten(), np.ones_like(z.flatten())]).T
+        pix_pos = np.array(
+            [x.flatten(), y.flatten(), z.flatten(), np.ones_like(z.flatten())]
+        ).T
         position = self.tran_pix_world @ pix_pos.T
         position = position.T
         # print(position)
