@@ -20,7 +20,7 @@ class EmptyScene(gym.Env):
     SIMULATION_STEP_DELAY = 1 / 240.0
 
     def __init__(
-        self, robot: KinovaRobotiq85, models: Models, camera=None, vis=False
+        self, robot: KinovaRobotiq85, models: Models, camera=None, vis=False, handle_violations=True
     ) -> None:
         super().__init__()
         self.robot = robot
@@ -29,6 +29,7 @@ class EmptyScene(gym.Env):
         self.camera = camera
         self.steps = 0
         self.violates_limits = False  # assume that we start in a non-violating state
+        self.handle_violations = handle_violations
 
         # define environment
         self.physicsClient = p.connect(p.GUI if self.vis else p.DIRECT)
@@ -69,13 +70,14 @@ class EmptyScene(gym.Env):
             self.robot.arm_num_dofs * 2
         )  # arm dof's left and right
 
-        self.collision_violation = CollisionViolation(
-            {
-                "joint_ids": [0, 1, 2, 3, 4, 5, 6],
-                "object_id_self": self.robot.id,
-                "object_ids_env": [self.planeID],
-            }
-        )
+        if self.handle_violations:
+            self.collision_violation = CollisionViolation(
+                {
+                    "joint_ids": [0, 1, 2, 3, 4, 5, 6],
+                    "object_id_self": self.robot.id,
+                    "object_ids_env": [self.planeID],
+                }
+            )
 
     def get_joint_limits(self):
         limits = []
@@ -154,12 +156,7 @@ class EmptyScene(gym.Env):
         return obs
 
     def get_observation(self):
-        # construct a unique mapping from joint position to observation
-        obs = np.zeros(self.robot.arm_num_dofs)
-        for i, _id in enumerate(self.robot.arm_dof_ids):
-            raw_value = p.getJointState(self.robot.id, _id)[0]
-            obs[i] = raw_value
-        return self.map_observation(obs)
+        return self.map_observation(self.robot.get_joint_states())
 
     def reset(self):
         self.steps = 0

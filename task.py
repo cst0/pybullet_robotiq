@@ -19,11 +19,12 @@ class Task:
 
 
 class GoToTask(Task):
-    def __init__(self, robot_id, eef_id, target_pos, target_radius):
+    def __init__(self, robot_id, eef_id, target_pos, target_radius, get_ee_pose_callback):
         self.target_pos = target_pos
         self.robot_id = robot_id
         self.eef_id = eef_id
         self.target_radius = target_radius
+        self.get_ee_pose_callback = get_ee_pose_callback
         self.reset()
 
     def reset(self):
@@ -39,12 +40,14 @@ class GoToTask(Task):
         )
 
     def reward(self):
-        ee_pos = p.getLinkState(self.robot_id, self.eef_id)[0]
+        #ee_pos = p.getLinkState(self.robot_id, self.eef_id)[0]
+        ee_pos = self.get_ee_pose_callback()
         # euclidean distance
         return -np.linalg.norm(np.array(ee_pos) - np.array(self.target_pos))
 
     def is_done(self):
-        ee_pos = p.getLinkState(self.robot_id, self.eef_id)[0]
+        #ee_pos = p.getLinkState(self.robot_id, self.eef_id)[0]
+        ee_pos = self.get_ee_pose_callback()
         return (
             np.linalg.norm(np.array(ee_pos) - np.array(self.target_pos))
             < self.target_radius

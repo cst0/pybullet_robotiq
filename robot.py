@@ -1,3 +1,8 @@
+import os
+
+os.environ["ROS_NAMESPACE"] = "/my_gen3"
+
+
 from abc import ABC, abstractmethod
 from collections import namedtuple
 import math
@@ -10,6 +15,7 @@ from moveit_msgs.msg import (
 )
 import numpy as np
 import pybullet as p
+
 import rospy
 
 # MOVE_CHUNK = (np.pi / 10)
@@ -27,6 +33,9 @@ class KinovaRobotiq85(ABC):
         self.is_gripper_closed = False
         self.start_joint_angles = start_joint_angles
 
+        self.arm_dof_ids = [1, 2, 3, 4, 5, 6, 7]
+
+        self.gripper_range = [0, 0.085]
         self.arm_num_dofs = 7
         self.arm_lower_limits = []
         self.arm_upper_limits = []
@@ -49,13 +58,13 @@ class KinovaRobotiq85(ABC):
     def reset_gripper(self):
         self.open_gripper()
 
-    @abstractmethod
     def open_gripper(self):
-        pass
+        self.move_gripper(self.gripper_range[1])
+        self.is_gripper_closed = False
 
-    @abstractmethod
     def close_gripper(self):
-        pass
+        self.move_gripper(self.gripper_range[0])
+        self.is_gripper_closed = True
 
     @abstractmethod
     def in_collision(self):
@@ -82,6 +91,10 @@ class KinovaRobotiq85(ABC):
 
     @abstractmethod
     def get_joint_states(self) -> List[float]:
+        pass
+
+    @abstractmethod
+    def get_ee_pose(self):
         pass
 
     @abstractmethod
@@ -190,14 +203,6 @@ class KinovaRobotiq85Sim(KinovaRobotiq85):
         for _ in range(10):
             self.step_simulation()
 
-    def open_gripper(self):
-        self.move_gripper(self.gripper_range[1])
-        self.is_gripper_closed = False
-
-    def close_gripper(self):
-        self.move_gripper(self.gripper_range[0])
-        self.is_gripper_closed = True
-
     def __init_robot__(self):
         self.arm_num_dofs = 7
         self.eef_id = 8
@@ -211,8 +216,6 @@ class KinovaRobotiq85Sim(KinovaRobotiq85):
             0.0,
         ]
 
-        self.arm_dof_ids = [1, 2, 3, 4, 5, 6, 7]
-
         self.id = p.loadURDF(
             "./urdf/kinova_robotiq_85.urdf",
             self.base_pos,
@@ -220,7 +223,6 @@ class KinovaRobotiq85Sim(KinovaRobotiq85):
             useFixedBase=True,
             flags=p.URDF_ENABLE_CACHED_GRAPHICS_SHAPES,
         )
-        self.gripper_range = [0, 0.085]
 
     def get_joint_states(self):
         joint_states = p.getJointStates(self.id, self.arm_controllable_joints)
@@ -302,6 +304,8 @@ class KinovaRobotiq85Sim(KinovaRobotiq85):
             maxVelocity=self.joints[self.mimic_parent_id].maxVelocity,
         )
 
+    def get_ee_pose(self):
+        return p.getLinkState(self.id, self.eef_id)[0]
 
 class KinovaRobotiq85Real(KinovaRobotiq85):
     def __init__(self, base_pos, base_ori, use_gui=False):
@@ -312,7 +316,7 @@ class KinovaRobotiq85Real(KinovaRobotiq85):
     def __init_robot__(self):
         # create action client for gripper
         self.gripper_client = actionlib.SimpleActionClient(
-            "/my_gen3/robotiq_2f_85_gripper_controller/gripper_cmd",
+            "robotiq_2f_85_gripper_controller/gripper_cmd",
             GripperCommandAction,
         )
         self.gripper_client.wait_for_server()
@@ -324,7 +328,7 @@ class KinovaRobotiq85Real(KinovaRobotiq85):
         self.group_name = "arm"
         self.moveit_group = MoveGroupCommander(self.group_name)
         self.display_trajectory_publisher = rospy.Publisher(
-            "/move_group/display_planned_path",
+            "move_group/display_planned_path",
             DisplayTrajectory,
             queue_size=20,
         )
@@ -357,6 +361,9 @@ class KinovaRobotiq85Real(KinovaRobotiq85):
         for n in range(7):
             returnme.append(joints.position[n])
         return returnme
+
+    def get_ee_pose(self):
+        return self.moveit_group.get_current_pose().pose.position, self.moveit_group.get_current_pose().pose.orientation
 
     def goto_joint_states(self, target_joint_positions: List[float]):
         joint_state = self.get_joint_states()

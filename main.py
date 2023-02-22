@@ -122,7 +122,7 @@ def get_task(task_name, args):
         )
     elif task_name == "go_to":
         return GoToTask(
-            args["robot"].id, args["robot"].eef_id, (0.25, 0.25, 0.25), args["radius"]
+            args["robot"].id, args["robot"].eef_id, (0.25, 0.25, 0.25), args["radius"], args["robot"].get_ee_pose
         )
     elif task_name == "close_gripper":
         return CloseGripperTask(args["robot"])
@@ -145,17 +145,18 @@ def learner():
 
     print("make env")
     env = make_vec_env(lambda: env, n_envs=10)  # type: ignore
-    model = PPO("MlpPolicy", env, verbose=1, n_steps=50, batch_size=100, seed=0)
+    model = PPO("MlpPolicy", env, verbose=1, n_steps=10, batch_size=100, seed=0)
 
     print("learn")
-    learn_with_timeout(model, 1 * 60)
+    learn_with_timeout(model, 1 * 20)
 
     del env
+    del target_task
     p.disconnect()
     print("\n\n\nDone")
 
-    env = EmptyScene(robot, ycb_models, camera, vis=True)
-    target_task.reset()
+    env = EmptyScene(real_robot, ycb_models, camera, vis=False, handle_violations=False)
+    target_task = get_task("go_to", {"robot": robot, "radius": 0.1})
     env.set_task(target_task)
     run_on_task(model, env, deterministic=False)
 
